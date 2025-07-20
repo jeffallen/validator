@@ -27,6 +27,19 @@ A GitHub Pages web application for analyzing CSV data quality with automated val
   - High digit repetition - flagged as moderate doubt (yellow)
 - **Round Number Bias**: Flags round numbers that may indicate estimation rather than actual measurement
 
+### 3. Phone Number Validation
+- **International Format Detection**: Recognizes phone numbers starting with country codes (+1, +44, etc.)
+- **Invalid Country Codes**: Flags numbers with non-existent country codes (999, 000) as doubtful (red)
+- **Invalid Characters**: Detects letters mixed with numbers as doubtful (red)
+- **Length Validation**: Checks for reasonable phone number lengths (8-15 digits)
+- **Country-Specific Validation**: Validates digit counts against known country standards:
+  - US/Canada (+1): 10 digits
+  - UK (+44): 10 digits 
+  - Germany (+49): 10-12 digits
+  - And 15+ other countries
+- **Missing Country Codes**: Flags local numbers without international format as moderate doubt (yellow)
+- **Pattern Analysis**: Detects suspicious digit repetition patterns
+
 ## Usage
 
 1. Open the web application
@@ -37,11 +50,14 @@ A GitHub Pages web application for analyzing CSV data quality with automated val
 
 ## Sample Data
 
-A `sample_data.csv` file is included to test the application with various data quality issues including:
+A `test_data.csv` file is included to test the application with various data quality issues including:
 - Invalid dates
 - Future dates
 - Employee IDs with suspicious digit patterns
 - Round salary numbers
+- International phone numbers from various countries
+- Invalid country codes and phone number formats
+- Phone numbers with mixed letters and numbers
 
 ## Technical Implementation
 
