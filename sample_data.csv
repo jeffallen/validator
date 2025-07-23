@@ -1,0 +1,11 @@
+Name,Birth Date,Employee ID,Salary,Start Date,Department
+John Smith,1985-03-15,12345,75000,2020-01-15,Engineering
+Jane Doe,1990-07-22,11111,82000,2019-05-01,Marketing
+Bob Johnson,1978-12-05,99999,95000,2018-03-10,Sales
+Alice Brown,2025-01-01,23456,65000,2021-09-15,HR
+Charlie Wilson,invalid-date,77777,100000,2017-12-01,Finance
+Diana Davis,1995-02-28,12121,71000,2022-02-14,Engineering
+Eve Thompson,1988-11-10,55555,88000,2020-07-01,Marketing
+Frank Miller,1982-06-18,98765,120000,2016-04-20,Sales
+Grace Lee,1992-09-03,33333,78000,2021-11-30,HR
+Henry Clark,1975-01-25,50000,200000,2015-08-12,Finance

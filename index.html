@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Validator</title>
+    <!-- Ready for GitHub Pages -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .file-input:hover {
+            border-color: #007bff;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin-right: 20px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .legend-valid {
+            background-color: white;
+        }
+
+        .legend-moderate {
+            background-color: #fff3cd;
+        }
+
+        .legend-doubtful {
+            background-color: #f8d7da;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        .cell-valid {
+            background-color: white;
+        }
+
+        .cell-moderate {
+            background-color: #fff3cd;
+        }
+
+        .cell-doubtful {
+            background-color: #f8d7da;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .error {
+            color: #dc3545;
+            margin-top: 10px;
+        }
+
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .footer a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CSV Data Validator</h1>
+        <p>Upload a CSV file to analyze data quality with automated validation rules</p>
+    </div>
+
+    <div class="upload-section">
+        <input type="file" id="csvFile" accept=".csv" class="file-input">
+        <div style="text-align: center; margin-top: 15px;">
+            <p>Need test data? <a href="test_data.csv" download="test_data.csv" class="btn" style="text-decoration: none; display: inline-block; font-size: 14px; padding: 8px 16px;">Download Sample CSV</a></p>
+        </div>
+        <div id="uploadError" class="error"></div>
+    </div>
+
+    <div class="legend" id="legend" style="display: none;">
+        <h3>Validation Legend:</h3>
+        <div class="legend-item legend-valid">Valid (No Issues)</div>
+        <div class="legend-item legend-moderate">Moderate Doubt (Suspicious)</div>
+        <div class="legend-item legend-doubtful">Doubtful (Likely Invalid)</div>
+    </div>
+
+    <div class="table-container" id="tableContainer" style="display: none;">
+        <h3>Data Analysis Results</h3>
+        <div id="tableWrapper"></div>
+        <div id="stats" class="stats"></div>
+    </div>
+
+    <div class="footer">
+        <p>
+            <strong>CSV Data Validator</strong> - Built with ❤️ by <a href="https://sketch.dev" target="_blank">Sketch AI</a>
+            |
+            <a href="https://github.com/boldsoftware/bold" target="_blank">View Source Code</a>
+        </p>
+    </div>
+
+    <script>
+        class CSVValidator {
+            constructor() {
+                this.data = [];
+                this.headers = [];
+                this.validationResults = [];
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                const fileInput = document.getElementById('csvFile');
+                fileInput.addEventListener('change', (e) => this.handleFileUpload(e));
+            }
+
+            handleFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    this.showError('Please select a CSV file.');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        this.parseCSV(e.target.result);
+                        this.validateData();
+                        this.renderTable();
+                        this.showStats();
+                        document.getElementById('legend').style.display = 'block';
+                        document.getElementById('tableContainer').style.display = 'block';
+                        this.clearError();
+                    } catch (error) {
+                        this.showError('Error parsing CSV: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            parseCSV(csvText) {
+                const lines = csvText.trim().split('\n');
+                if (lines.length === 0) {
+                    throw new Error('CSV file is empty');
+                }
+
+                // Parse headers
+                this.headers = this.parseCSVLine(lines[0]);
+                
+                // Parse data rows
+                this.data = [];
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim()) {
+                        const row = this.parseCSVLine(lines[i]);
+                        // Pad row to match header length
+                        while (row.length < this.headers.length) {
+                            row.push('');
+                        }
+                        this.data.push(row);
+                    }
+                }
+            }
+
+            parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    const nextChar = line[i + 1];
+                    
+                    if (char === '"' && inQuotes && nextChar === '"') {
+                        current += '"';
+                        i++; // Skip next quote
+                    } else if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                result.push(current.trim());
+                return result;
+            }
+
+            validateData() {
+                this.validationResults = [];
+                
+                for (let rowIndex = 0; rowIndex < this.data.length; rowIndex++) {
+                    const row = this.data[rowIndex];
+                    const rowResults = [];
+                    
+                    for (let colIndex = 0; colIndex < row.length; colIndex++) {
+                        const cellValue = row[colIndex];
+                        const validation = this.validateCell(cellValue, colIndex, rowIndex);
+                        rowResults.push(validation);
+                    }
+                    
+                    this.validationResults.push(rowResults);
+                }
+            }
+
+            validateCell(value, colIndex, rowIndex) {
+                if (!value || value.trim() === '') {
+                    return { level: 'valid', reason: 'Empty cell' };
+                }
+
+                const trimmedValue = value.trim();
+                
+                // Rule 1: Date validation
+                if (this.looksLikeDate(trimmedValue)) {
+                    return this.validateDate(trimmedValue);
+                }
+                
+                // Rule 2: Integer fraud detection
+                if (this.looksLikeInteger(trimmedValue)) {
+                    return this.validateInteger(trimmedValue, colIndex, rowIndex);
+                }
+                
+                // Rule 3: Phone number validation
+                if (this.looksLikePhoneNumber(trimmedValue)) {
+                    return this.validatePhoneNumber(trimmedValue);
+                }
+                
+                return { level: 'valid', reason: 'No validation rules applied' };
+            }
+
+            looksLikeDate(value) {
+                // Common date patterns
+                const datePatterns = [
+                    /^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/, // MM/DD/YYYY or MM-DD-YYYY
+                    /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/, // YYYY/MM/DD or YYYY-MM-DD
+                    /^\d{1,2}[-\/]\d{1,2}[-\/]\d{2}$/, // MM/DD/YY or MM-DD-YY
+                    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, // ISO datetime
+                    /^\w{3}\s+\d{1,2},?\s+\d{4}$/, // Jan 1, 2023
+                    /^\d{1,2}\s+\w{3}\s+\d{4}$/ // 1 Jan 2023
+                ];
+                
+                return datePatterns.some(pattern => pattern.test(value));
+            }
+
+            validateDate(dateStr) {
+                const date = new Date(dateStr);
+                
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    return { level: 'doubtful', reason: 'Invalid date format' };
+                }
+                
+                // Check for reasonable date range (1900-2100)
+                const year = date.getFullYear();
+                if (year < 1900 || year > 2100) {
+                    return { level: 'moderate', reason: 'Date outside reasonable range' };
+                }
+                
+                // Check for future dates that might be suspicious
+                const now = new Date();
+                const oneYearFromNow = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+                if (date > oneYearFromNow) {
+                    return { level: 'moderate', reason: 'Date more than 1 year in future' };
+                }
+                
+                return { level: 'valid', reason: 'Valid date' };
+            }
+
+            looksLikeInteger(value) {
+                return /^-?\d+$/.test(value) && !isNaN(parseInt(value));
+            }
+
+            validateInteger(intStr, colIndex, rowIndex) {
+                const num = parseInt(intStr);
+                
+                // Apply Benford's Law for fraud detection
+                const benfordResult = this.checkBenfordLaw(intStr);
+                if (benfordResult.level !== 'valid') {
+                    return benfordResult;
+                }
+                
+                // Check for suspicious patterns
+                const patternResult = this.checkSuspiciousPatterns(intStr);
+                if (patternResult.level !== 'valid') {
+                    return patternResult;
+                }
+                
+                // Check for round number bias
+                if (this.isRoundNumber(num)) {
+                    return { level: 'moderate', reason: 'Round number - may indicate estimation' };
+                }
+                
+                return { level: 'valid', reason: 'Integer appears valid' };
+            }
+
+            checkBenfordLaw(numStr) {
+                const firstDigit = parseInt(numStr.replace(/^-/, '')[0]);
+                
+                if (firstDigit === 0) {
+                    return { level: 'doubtful', reason: 'Leading zero in integer' };
+                }
+                
+                // Benford's law expected frequencies for first digit
+                const benfordExpected = {
+                    1: 30.1, 2: 17.6, 3: 12.5, 4: 9.7, 5: 7.9,
+                    6: 6.7, 7: 5.8, 8: 5.1, 9: 4.6
+                };
+                
+                // For single numbers, we can't apply Benford's law effectively,
+                // but we can flag some suspicious patterns
+                if (firstDigit === 1 || firstDigit === 2) {
+                    return { level: 'valid', reason: 'First digit follows expected pattern' };
+                } else if (firstDigit >= 8) {
+                    return { level: 'moderate', reason: 'High first digit - less common in natural data' };
+                }
+                
+                return { level: 'valid', reason: 'First digit analysis passed' };
+            }
+
+            checkSuspiciousPatterns(numStr) {
+                const absStr = numStr.replace(/^-/, '');
+                
+                // Check for repeated digits
+                if (/^(\d)\1{2,}$/.test(absStr)) {
+                    return { level: 'doubtful', reason: 'All digits are the same' };
+                }
+                
+                // Check for sequential patterns
+                if (this.isSequential(absStr)) {
+                    return { level: 'moderate', reason: 'Sequential digit pattern' };
+                }
+                
+                // Check for too many repeated digits
+                const digitCounts = {};
+                for (const digit of absStr) {
+                    digitCounts[digit] = (digitCounts[digit] || 0) + 1;
+                }
+                
+                const maxRepeats = Math.max(...Object.values(digitCounts));
+                if (maxRepeats > absStr.length * 0.6 && absStr.length > 2) {
+                    return { level: 'moderate', reason: 'High repetition of digits' };
+                }
+                
+                return { level: 'valid', reason: 'No suspicious patterns detected' };
+            }
+
+            isSequential(str) {
+                if (str.length < 3) return false;
+                
+                let ascending = true;
+                let descending = true;
+                
+                for (let i = 1; i < str.length; i++) {
+                    const current = parseInt(str[i]);
+                    const previous = parseInt(str[i-1]);
+                    
+                    if (current !== previous + 1) ascending = false;
+                    if (current !== previous - 1) descending = false;
+                }
+                
+                return ascending || descending;
+            }
+
+            isRoundNumber(num) {
+                const absNum = Math.abs(num);
+                
+                // Check if it's divisible by 10, 100, 1000, etc.
+                if (absNum >= 100 && absNum % 100 === 0) return true;
+                if (absNum >= 50 && absNum % 50 === 0) return true;
+                if (absNum >= 25 && absNum % 25 === 0) return true;
+                
+                return false;
+            }
+
+            looksLikePhoneNumber(value) {
+                // Phone number patterns: starts with + or contains phone-like patterns
+                const phonePatterns = [
+                    /^\+\d/, // International format starting with +
+                    /^\d{3}[-\s]?\d{3}[-\s]?\d{4}$/, // US format
+                    /^\(\d{3}\)\s?\d{3}[-\s]?\d{4}$/, // US format with parentheses
+                    /^\d{3}[-\s]\d{4}$/, // Short format
+                    /^\d{10,15}$/ // Just digits, reasonable phone length
+                ];
+                
+                return phonePatterns.some(pattern => pattern.test(value)) || 
+                       value.includes('+') || 
+                       (value.match(/\d/g) || []).length >= 7; // At least 7 digits
+            }
+
+            validatePhoneNumber(phoneStr) {
+                const originalPhone = phoneStr;
+                
+                // Remove common formatting characters for analysis
+                const cleanPhone = phoneStr.replace(/[\s\-\(\)]/g, '');
+                
+                // Check for invalid characters (letters mixed with numbers in phone context)
+                if (/[a-zA-Z]/.test(cleanPhone)) {
+                    return { level: 'doubtful', reason: 'Phone number contains letters' };
+                }
+                
+                // Check if it starts with +
+                if (!phoneStr.startsWith('+')) {
+                    if (phoneStr.match(/^\d{10}$/)) {
+                        return { level: 'moderate', reason: 'Phone number missing country code' };
+                    }
+                    return { level: 'moderate', reason: 'Phone number format unclear' };
+                }
+                
+                // Extract country code
+                const countryCodeMatch = phoneStr.match(/^\+(\d{1,4})/);
+                if (!countryCodeMatch) {
+                    return { level: 'doubtful', reason: 'Invalid international format' };
+                }
+                
+                const countryCode = countryCodeMatch[1];
+                
+                // Check for invalid country codes
+                const invalidCountryCodes = ['999', '000', '111', '123'];
+                if (invalidCountryCodes.includes(countryCode)) {
+                    return { level: 'doubtful', reason: 'Invalid country code' };
+                }
+                
+                // Check for suspicious country codes (too high)
+                if (parseInt(countryCode) > 998) {
+                    return { level: 'doubtful', reason: 'Country code out of valid range' };
+                }
+                
+                // Validate common country codes and their typical formats
+                const countryValidation = this.validateCountrySpecificPhone(countryCode, phoneStr);
+                if (countryValidation.level !== 'valid') {
+                    return countryValidation;
+                }
+                
+                // Check overall length
+                const digitCount = (cleanPhone.match(/\d/g) || []).length;
+                if (digitCount < 8) {
+                    return { level: 'doubtful', reason: 'Phone number too short' };
+                }
+                if (digitCount > 15) {
+                    return { level: 'doubtful', reason: 'Phone number too long' };
+                }
+                
+                // Check for suspicious patterns
+                const phoneDigits = cleanPhone.replace(/^\+/, '');
+                if (/^(\d)\1{6,}/.test(phoneDigits)) {
+                    return { level: 'moderate', reason: 'Too many repeated digits' };
+                }
+                
+                return { level: 'valid', reason: 'Valid international phone number' };
+            }
+
+            validateCountrySpecificPhone(countryCode, phoneStr) {
+                // Common country codes and their expected patterns
+                const countryCodes = {
+                    '1': { name: 'US/Canada', minDigits: 10, maxDigits: 10 },
+                    '44': { name: 'UK', minDigits: 10, maxDigits: 10 },
+                    '33': { name: 'France', minDigits: 9, maxDigits: 9 },
+                    '49': { name: 'Germany', minDigits: 10, maxDigits: 12 },
+                    '81': { name: 'Japan', minDigits: 10, maxDigits: 10 },
+                    '61': { name: 'Australia', minDigits: 9, maxDigits: 9 },
+                    '55': { name: 'Brazil', minDigits: 10, maxDigits: 11 },
+                    '86': { name: 'China', minDigits: 11, maxDigits: 11 },
+                    '7': { name: 'Russia', minDigits: 10, maxDigits: 10 },
+                    '91': { name: 'India', minDigits: 10, maxDigits: 10 },
+                    '39': { name: 'Italy', minDigits: 9, maxDigits: 10 },
+                    '34': { name: 'Spain', minDigits: 9, maxDigits: 9 },
+                    '31': { name: 'Netherlands', minDigits: 9, maxDigits: 9 },
+                    '52': { name: 'Mexico', minDigits: 10, maxDigits: 10 },
+                    '47': { name: 'Norway', minDigits: 8, maxDigits: 8 },
+                    '41': { name: 'Switzerland', minDigits: 9, maxDigits: 9 },
+                    '46': { name: 'Sweden', minDigits: 9, maxDigits: 9 }
+                };
+                
+                const countryInfo = countryCodes[countryCode];
+                if (!countryInfo) {
+                    // Unknown country code - could be valid but unusual
+                    if (parseInt(countryCode) > 900) {
+                        return { level: 'doubtful', reason: 'Suspicious country code' };
+                    }
+                    return { level: 'moderate', reason: 'Unknown country code' };
+                }
+                
+                // Count digits after country code
+                const afterCountryCode = phoneStr.substring(phoneStr.indexOf(countryCode) + countryCode.length);
+                const nationalDigits = (afterCountryCode.match(/\d/g) || []).length;
+                
+                if (nationalDigits < countryInfo.minDigits) {
+                    return { level: 'doubtful', reason: `Too few digits for ${countryInfo.name}` };
+                }
+                if (nationalDigits > countryInfo.maxDigits) {
+                    return { level: 'moderate', reason: `Too many digits for ${countryInfo.name}` };
+                }
+                
+                return { level: 'valid', reason: `Valid ${countryInfo.name} phone number` };
+            }
+
+            renderTable() {
+                const tableWrapper = document.getElementById('tableWrapper');
+                
+                let html = '<table>';
+                
+                // Headers
+                html += '<thead><tr>';
+                for (const header of this.headers) {
+                    html += `<th>${this.escapeHtml(header)}</th>`;
+                }
+                html += '</tr></thead>';
+                
+                // Data rows
+                html += '<tbody>';
+                for (let rowIndex = 0; rowIndex < this.data.length; rowIndex++) {
+                    html += '<tr>';
+                    const row = this.data[rowIndex];
+                    const validationRow = this.validationResults[rowIndex];
+                    
+                    for (let colIndex = 0; colIndex < this.headers.length; colIndex++) {
+                        const cellValue = row[colIndex] || '';
+                        const validation = validationRow[colIndex] || { level: 'valid', reason: '' };
+                        const cssClass = `cell-${validation.level}`;
+                        const title = validation.reason;
+                        
+                        html += `<td class="${cssClass}" title="${this.escapeHtml(title)}">${this.escapeHtml(cellValue)}</td>`;
+                    }
+                    html += '</tr>';
+                }
+                html += '</tbody>';
+                
+                html += '</table>';
+                tableWrapper.innerHTML = html;
+            }
+
+            showStats() {
+                const stats = { valid: 0, moderate: 0, doubtful: 0, total: 0 };
+                
+                for (const row of this.validationResults) {
+                    for (const cell of row) {
+                        stats[cell.level]++;
+                        stats.total++;
+                    }
+                }
+                
+                const statsDiv = document.getElementById('stats');
+                statsDiv.innerHTML = `
+                    <strong>Validation Summary:</strong> 
+                    ${stats.total} total cells | 
+                    ${stats.valid} valid (${(stats.valid/stats.total*100).toFixed(1)}%) | 
+                    ${stats.moderate} moderate doubt (${(stats.moderate/stats.total*100).toFixed(1)}%) | 
+                    ${stats.doubtful} doubtful (${(stats.doubtful/stats.total*100).toFixed(1)}%)
+                `;
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            showError(message) {
+                document.getElementById('uploadError').textContent = message;
+            }
+
+            clearError() {
+                document.getElementById('uploadError').textContent = '';
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new CSVValidator();
+        });
+    </script>
+</body>
+</html>
